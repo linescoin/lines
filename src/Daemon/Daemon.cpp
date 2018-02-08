@@ -68,7 +68,7 @@ namespace
   const command_line::arg_descriptor<bool>        arg_console     = {"no-console", "Disable daemon console commands"};
   const command_line::arg_descriptor<std::string> arg_set_fee_address = { "fee-address", "Sets fee address for light wallets to the daemon's RPC responses.", "" };
   const command_line::arg_descriptor<bool>        arg_print_genesis_tx = { "print-genesis-tx", "Prints genesis' block tx hex to insert it to config and exits" };
-  const command_line::arg_descriptor<std::vector<std::string>> arg_genesis_block_reward_address = { "genesis-block-reward-address", "" };
+  const command_line::arg_descriptor<std::vector<std::string>> arg_genesis_block_reward_address = { "genesis-block-reward-address", CryptoNote::parameters::GENESIS_BLOCK_REWARD_ADDRESS};
   const command_line::arg_descriptor<std::vector<std::string>>        arg_enable_cors = { "enable-cors", "Adds header 'Access-Control-Allow-Origin' to the daemon's RPC responses. Uses the value as domain. Use * for all" };
   const command_line::arg_descriptor<std::string> arg_GENESIS_COINBASE_TX_HEX  = {"GENESIS_COINBASE_TX_HEX", "Genesis transaction hex", CryptoNote::parameters::GENESIS_COINBASE_TX_HEX};  
   const command_line::arg_descriptor<uint64_t>    arg_CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX  = {"CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX", "uint64_t", CryptoNote::parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX};
@@ -385,19 +385,6 @@ command_line::add_arg(desc_cmd_sett, arg_print_genesis_tx);
       }
 
       boost::system::error_code ec;
-      if (boost::filesystem::exists(config_path, ec)) {
-        std::cout << "Success: Configuration file openned: " << config_path << std::endl;
-        po::store(po::parse_config_file<char>(config_path.string<std::string>().c_str(), desc_cmd_sett, true), vm);
-      }
-      else
-      {
-        std::cout << "Configuration error: Cannot open configuration file" << std::endl;
-        std::cout << "" << std::endl;
-        std::cout << "Usage:" << std::endl;
-        std::cout << "Windows:   forknoted.exe --config-file configs/dashcoin.conf" << std::endl;
-        std::cout << "Linux/Mac:   ./forknoted --config-file configs/dashcoin.conf" << std::endl;
-        return false;
-      }
       po::notify(vm);
       if (command_line::get_arg(vm, command_line::arg_data_dir) == Tools::getDefaultDataDirectory() && command_line::has_arg(vm, arg_CRYPTONOTE_NAME) && !command_line::get_arg(vm, arg_CRYPTONOTE_NAME).empty()) {
         boost::replace_all(data_dir, CryptoNote::CRYPTONOTE_NAME, command_line::get_arg(vm, arg_CRYPTONOTE_NAME));

@@ -1320,20 +1320,6 @@ int main(int argc, char* argv[]) {
       config_path = data_dir_path / config_path;
     }
     boost::system::error_code ec;
-    if (boost::filesystem::exists(config_path, ec))
-    {
-      std::cout << "Success: Configuration file openned" << std::endl;
-      po::store(po::parse_config_file<char>(config_path.string<std::string>().c_str(), desc_params, true), vm);
-    }
-    else
-    {
-      std::cout << "Configuration error: Cannot open configuration file" << std::endl;
-      std::cout << "" << std::endl;
-      std::cout << "Usage:" << std::endl;
-      std::cout << "Windows:   simplewallet.exe --config-file configs/dashcoin.conf" << std::endl;
-      std::cout << "Linux/Mac:   ./simplewallet --config-file configs/dashcoin.conf" << std::endl;
-      return false;
-    }
     po::notify(vm);
     return true;
   });
