@@ -83,89 +83,6 @@ bool PaymentGateService::init(int argc, char** argv) {
 
   Logging::LoggerRef log(logger, "main");
 
-  currencyBuilder.genesisCoinbaseTxHex(config.coinBaseConfig.GENESIS_COINBASE_TX_HEX);
-  currencyBuilder.publicAddressBase58Prefix(config.coinBaseConfig.CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX);
-  currencyBuilder.moneySupply(config.coinBaseConfig.MONEY_SUPPLY);
-  currencyBuilder.buggedZawyDifficultyBlockIndex(config.coinBaseConfig.BUGGED_ZAWY_DIFFICULTY_BLOCK_INDEX);
-  currencyBuilder.zawyDifficultyBlockIndex(config.coinBaseConfig.ZAWY_DIFFICULTY_BLOCK_INDEX);
-  currencyBuilder.zawyDifficultyV2(config.coinBaseConfig.ZAWY_DIFFICULTY_V2);
-//uint8_t recognized as char
-  if (config.coinBaseConfig.ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION == 0) {
-    currencyBuilder.zawyDifficultyBlockVersion(config.coinBaseConfig.ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION);
-  } else {
-    currencyBuilder.zawyDifficultyBlockVersion(config.coinBaseConfig.ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION - '0');
-  }
-  currencyBuilder.genesisBlockReward(config.coinBaseConfig.GENESIS_BLOCK_REWARD);
-  currencyBuilder.cryptonoteCoinVersion(config.coinBaseConfig.CRYPTONOTE_COIN_VERSION);
-  currencyBuilder.tailEmissionReward(config.coinBaseConfig.TAIL_EMISSION_REWARD);
-  currencyBuilder.killHeight(config.coinBaseConfig.KILL_HEIGHT);
-  currencyBuilder.mandatoryTransaction(config.coinBaseConfig.MANDATORY_TRANSACTION);
-  currencyBuilder.mixinStartHeight(config.coinBaseConfig.MIXIN_START_HEIGHT);
-  currencyBuilder.minMixin(config.coinBaseConfig.MIN_MIXIN);
-//uint8_t recognized as char
-  if (config.coinBaseConfig.MANDATORY_MIXIN_BLOCK_VERSION == 0) {
-    currencyBuilder.mandatoryMixinBlockVersion(config.coinBaseConfig.MANDATORY_MIXIN_BLOCK_VERSION);
-  } else {
-    currencyBuilder.mandatoryMixinBlockVersion(config.coinBaseConfig.MANDATORY_MIXIN_BLOCK_VERSION - '0');
-  }
-  currencyBuilder.emissionSpeedFactor(config.coinBaseConfig.EMISSION_SPEED_FACTOR);
-  currencyBuilder.blockGrantedFullRewardZone(config.coinBaseConfig.CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE);
-  currencyBuilder.blockGrantedFullRewardZoneV1(config.coinBaseConfig.CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1);
-  currencyBuilder.blockGrantedFullRewardZoneV2(config.coinBaseConfig.CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2);
-  currencyBuilder.numberOfDecimalPlaces(config.coinBaseConfig.CRYPTONOTE_DISPLAY_DECIMAL_POINT);
-  currencyBuilder.mininumFee(config.coinBaseConfig.MINIMUM_FEE);
-  currencyBuilder.defaultDustThreshold(config.coinBaseConfig.DEFAULT_DUST_THRESHOLD);
-  currencyBuilder.difficultyTarget(config.coinBaseConfig.DIFFICULTY_TARGET);
-  currencyBuilder.minedMoneyUnlockWindow(config.coinBaseConfig.CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW);
-  currencyBuilder.maxBlockSizeInitial(config.coinBaseConfig.MAX_BLOCK_SIZE_INITIAL);
-  if (config.coinBaseConfig.EXPECTED_NUMBER_OF_BLOCKS_PER_DAY && config.coinBaseConfig.EXPECTED_NUMBER_OF_BLOCKS_PER_DAY != 0)
-  {
-    currencyBuilder.expectedNumberOfBlocksPerDay(config.coinBaseConfig.EXPECTED_NUMBER_OF_BLOCKS_PER_DAY);
-    currencyBuilder.difficultyWindow(config.coinBaseConfig.EXPECTED_NUMBER_OF_BLOCKS_PER_DAY);
-    currencyBuilder.difficultyWindowV1(config.coinBaseConfig.EXPECTED_NUMBER_OF_BLOCKS_PER_DAY);
-    currencyBuilder.difficultyWindowV2(config.coinBaseConfig.EXPECTED_NUMBER_OF_BLOCKS_PER_DAY);
-    currencyBuilder.upgradeVotingWindow(config.coinBaseConfig.EXPECTED_NUMBER_OF_BLOCKS_PER_DAY);
-    currencyBuilder.upgradeWindow(config.coinBaseConfig.EXPECTED_NUMBER_OF_BLOCKS_PER_DAY);
-  } else {
-    currencyBuilder.expectedNumberOfBlocksPerDay(24 * 60 * 60 / config.coinBaseConfig.DIFFICULTY_TARGET);
-    currencyBuilder.difficultyWindow(24 * 60 * 60 / config.coinBaseConfig.DIFFICULTY_TARGET);
-    currencyBuilder.difficultyWindowV1(24 * 60 * 60 / config.coinBaseConfig.DIFFICULTY_TARGET);
-    currencyBuilder.difficultyWindowV2(24 * 60 * 60 / config.coinBaseConfig.DIFFICULTY_TARGET);
-  }
-  currencyBuilder.maxBlockSizeGrowthSpeedDenominator(365 * 24 * 60 * 60 / config.coinBaseConfig.DIFFICULTY_TARGET);
-  currencyBuilder.lockedTxAllowedDeltaSeconds(config.coinBaseConfig.DIFFICULTY_TARGET * CryptoNote::parameters::CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS);
-  if (config.coinBaseConfig.UPGRADE_HEIGHT_V2 && config.coinBaseConfig.UPGRADE_HEIGHT_V2 != 0)
-  {
-    currencyBuilder.upgradeHeightV2(config.coinBaseConfig.UPGRADE_HEIGHT_V2);
-  }
-  if (config.coinBaseConfig.UPGRADE_HEIGHT_V3 && config.coinBaseConfig.UPGRADE_HEIGHT_V3 != 0)
-  {
-    currencyBuilder.upgradeHeightV3(config.coinBaseConfig.UPGRADE_HEIGHT_V3);
-  }
-  if (config.coinBaseConfig.KEY_IMAGE_CHECKING_BLOCK_INDEX && config.coinBaseConfig.KEY_IMAGE_CHECKING_BLOCK_INDEX != 0)
-  {
-    currencyBuilder.keyImageCheckingBlockIndex(config.coinBaseConfig.KEY_IMAGE_CHECKING_BLOCK_INDEX);
-  }
-  if (config.coinBaseConfig.DIFFICULTY_WINDOW && config.coinBaseConfig.DIFFICULTY_WINDOW != 0)
-  {
-    currencyBuilder.difficultyWindow(config.coinBaseConfig.DIFFICULTY_WINDOW);
-  }
-  currencyBuilder.difficultyLag(config.coinBaseConfig.DIFFICULTY_LAG);
-currencyBuilder.maxTransactionSizeLimit(config.coinBaseConfig.MAX_TRANSACTION_SIZE_LIMIT);
-currencyBuilder.fusionTxMaxSize(config.coinBaseConfig.MAX_TRANSACTION_SIZE_LIMIT * 30 / 100);
-  currencyBuilder.difficultyCut(config.coinBaseConfig.DIFFICULTY_CUT);
-  if (config.coinBaseConfig.DIFFICULTY_WINDOW_V1 && config.coinBaseConfig.DIFFICULTY_WINDOW_V1 != 0)
-  {
-    currencyBuilder.difficultyWindowV1(config.coinBaseConfig.DIFFICULTY_WINDOW_V1);
-  }
-  if (config.coinBaseConfig.DIFFICULTY_WINDOW_V2 && config.coinBaseConfig.DIFFICULTY_WINDOW_V2 != 0)
-  {
-    currencyBuilder.difficultyWindowV2(config.coinBaseConfig.DIFFICULTY_WINDOW_V2);
-  }
-  currencyBuilder.difficultyLagV1(config.coinBaseConfig.DIFFICULTY_LAG_V1);
-  currencyBuilder.difficultyLagV2(config.coinBaseConfig.DIFFICULTY_LAG_V2);
-  currencyBuilder.difficultyCutV1(config.coinBaseConfig.DIFFICULTY_CUT_V1);
-  currencyBuilder.difficultyCutV2(config.coinBaseConfig.DIFFICULTY_CUT_V2);
   if (config.gateConfiguration.testnet) {
     log(Logging::INFO) << "Starting in testnet mode";
     currencyBuilder.testnet(true);
@@ -239,15 +156,11 @@ void PaymentGateService::stop() {
 void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   log(Logging::INFO) << "Starting Payment Gate with local node";
 
-      std::string data_dir = config.dataDir;
-      if (config.dataDir == Tools::getDefaultDataDirectory() && !config.coinBaseConfig.CRYPTONOTE_NAME.empty()) {
-        boost::replace_all(data_dir, CryptoNote::CRYPTONOTE_NAME, config.coinBaseConfig.CRYPTONOTE_NAME);
-      }
   CryptoNote::DataBaseConfig dbConfig;
 
   //TODO: make command line options
   dbConfig.setConfigFolderDefaulted(true);
-dbConfig.setDataDir(data_dir);
+  dbConfig.setDataDir(config.dataDir);
   dbConfig.setMaxOpenFiles(100);
   dbConfig.setReadCacheSize(128*1024*1024);
   dbConfig.setWriteBufferSize(128*1024*1024);

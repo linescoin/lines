@@ -572,18 +572,6 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     return blockValidationResult;
   }
 
-  if (currency.mandatoryTransaction()) {
-    if (cachedBlock.getBlock().transactionHashes.size() < 1 && cache->getBlockIndex(cachedBlock.getBlockHash()) > parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW) {
-      logger(Logging::WARNING) << "New block must have at least one transaction";
-      return error::BlockValidationError::NOT_ENOUGH_TRANSACTIONS;
-    }
-  }
-
-  if (currency.killHeight() != 0 && cache->getBlockIndex(cachedBlock.getBlockHash()) > currency.killHeight()) {
-    logger(Logging::ERROR, Logging::BRIGHT_RED) << "Cannot add more blocks. Block " << currency.killHeight() << " is the kill block";
-      return error::BlockValidationError::NO_MORE_BLOCK;
-  }
-
   auto currentDifficulty = cache->getDifficultyForNextBlock(previousBlockIndex);
   if (currentDifficulty == 0) {
     logger(Logging::DEBUGGING) << "Block " << cachedBlock.getBlockHash() << " has difficulty overhead";
@@ -874,15 +862,13 @@ bool Core::getRandomOutputs(uint64_t amount, uint16_t count, std::vector<uint32_
     return true;
   }
 
-// Add bottomBlockLimit
-auto bottomBlockLimit = currency.mixinStartHeight();
   auto upperBlockLimit = getTopBlockIndex() - currency.minedMoneyUnlockWindow();
   if (upperBlockLimit < currency.minedMoneyUnlockWindow()) {
     logger(Logging::DEBUGGING) << "Blockchain height is less than mined unlock window";
     return false;
   }
 
- globalIndexes = chainsLeaves[0]->getRandomOutsByAmount(amount, count, getTopBlockIndex(), bottomBlockLimit);
+  globalIndexes = chainsLeaves[0]->getRandomOutsByAmount(amount, count, getTopBlockIndex());
   if (globalIndexes.empty()) {
     return false;
   }
@@ -1072,12 +1058,6 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
     return false;
   }
 
-  if (currency.mandatoryTransaction()) {
-    if (transactionsSize == 0 && height > parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW) { 
-      logger(Logging::ERROR, Logging::BRIGHT_RED) << "Need at least one transaction beside base transaction";
-      return false;
-    }
-  }
   size_t cumulativeSize = transactionsSize + getObjectBinarySize(b.baseTransaction);
   const size_t TRIES_COUNT = 10;
   for (size_t tryCount = 0; tryCount < TRIES_COUNT; ++tryCount) {
@@ -1145,9 +1125,6 @@ CoreStatistics Core::getCoreStatistics() const {
   return result;
 }
 
-Checkpoints Core::get_checkpoints() {
-  return checkpoints;
-}
 size_t Core::getPoolTransactionCount() const {
   throwIfNotInitialized();
   return transactionPool->getTransactionCount();
@@ -1225,12 +1202,6 @@ std::error_code Core::validateTransaction(const CachedTransaction& cachedTransac
                                           IBlockchainCache* cache, uint64_t& fee, uint32_t blockIndex) {
   // TransactionValidatorState currentState;
   const auto& transaction = cachedTransaction.getTransaction();
-uint8_t blockMajorVersion = getBlockMajorVersionForHeight(blockIndex);
-auto error_mixin = validateMixin(transaction, blockMajorVersion);
-if (error_mixin != error::TransactionValidationError::VALIDATION_SUCCESS) {
-  return error_mixin;
-}
-
 auto error = validateSemantic(transaction, fee, blockIndex);
   if (error != error::TransactionValidationError::VALIDATION_SUCCESS) {
     return error;
@@ -1272,7 +1243,7 @@ auto error = validateSemantic(transaction, fee, blockIndex);
         std::for_each(outputKeys.begin(), outputKeys.end(), [&outputKeyPointers] (const Crypto::PublicKey& key) { outputKeyPointers.push_back(&key); });
         if (!Crypto::check_ring_signature(cachedTransaction.getTransactionPrefixHash(), in.keyImage, outputKeyPointers.data(),
                                           outputKeyPointers.size(), transaction.signatures[inputIndex].data(),
-                                          blockIndex > currency.keyImageCheckingBlockIndex())) {
+                                          blockIndex > parameters::KEY_IMAGE_CHECKING_BLOCK_INDEX)) {
           return error::TransactionValidationError::INPUT_INVALID_SIGNATURES;
         }
       }
@@ -1285,29 +1256,6 @@ auto error = validateSemantic(transaction, fee, blockIndex);
     inputIndex++;
   }
 
-  return error::TransactionValidationError::VALIDATION_SUCCESS;
-}
-
-bool Core::f_getMixin(const Transaction& transaction, uint64_t& mixin) {
-  mixin = 0;
-  for (const TransactionInput& txin : transaction.inputs) {
-    if (txin.type() != typeid(KeyInput)) {
-      continue;
-    }
-    uint64_t currentMixin = boost::get<KeyInput>(txin).outputIndexes.size();
-    if (currentMixin > mixin) {
-      mixin = currentMixin;
-    }
-  }
-  return true;
-}
-
-std::error_code Core::validateMixin(const Transaction& transaction, uint8_t majorBlockVersion) {
-  uint64_t mixin = 0;
-  f_getMixin(transaction, mixin);
-  if (currency.mandatoryMixinBlockVersion() >= majorBlockVersion && mixin < currency.minMixin()) {
-    return error::TransactionValidationError::MIXIN_COUNT_TOO_SMALL;
-  }
   return error::TransactionValidationError::VALIDATION_SUCCESS;
 }
 
@@ -1361,7 +1309,7 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
       // outputIndexes are packed here, first is absolute, others are offsets to previous,
       // so first can be zero, others can't
   // Fix discovered by Monero Lab and suggested by "fluffypony" (bitcointalk.org)
-  if (!(scalarmultKey(in.keyImage, L) == I) && blockIndex > currency.keyImageCheckingBlockIndex()) {
+  if (!(scalarmultKey(in.keyImage, L) == I) && blockIndex > parameters::KEY_IMAGE_CHECKING_BLOCK_INDEX) {
     return error::TransactionValidationError::INPUT_INVALID_DOMAIN_KEYIMAGES;
   }
 

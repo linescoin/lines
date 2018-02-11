@@ -173,55 +173,6 @@ struct COMMAND_RPC_GET_TX_GLOBAL_OUTPUTS_INDEXES {
   };
 };
 //-----------------------------------------------
-struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_request {
-  std::vector<uint64_t> amounts;
-  uint16_t outs_count;
-
-  void serialize(ISerializer &s) {
-    KV_MEMBER(amounts)
-    KV_MEMBER(outs_count)
-  }
-};
-
-struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_out_entry {
-  uint32_t global_amount_index;
-  Crypto::PublicKey out_key;
-  void serialize(ISerializer &s) {
-    KV_MEMBER(global_amount_index)
-    KV_MEMBER(out_key)
-  }
-};
-
-struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_outs_for_amount {
-  uint64_t amount;
-  std::vector<COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_out_entry> outs;
-
-  void serialize(ISerializer &s) {
-    KV_MEMBER(amount)
-    KV_MEMBER(outs)
-  }
-};
-
-struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_response {
-  std::vector<COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_outs_for_amount> outs;
-  std::string status;
-
-  void serialize(ISerializer &s) {
-    KV_MEMBER(outs)
-    KV_MEMBER(status)
-  }
-};
-
-struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON {
-  typedef COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_request request;
-  typedef COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_response response;
-
-  typedef COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_out_entry out_entry;
-  typedef COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_outs_for_amount outs_for_amount;
-};
-
-//-----------------------------------------------
-
 struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_request {
   std::vector<uint64_t> amounts;
   uint16_t outs_count;
@@ -354,20 +305,6 @@ struct COMMAND_RPC_STOP_DAEMON {
 };
 
 //
-struct COMMAND_RPC_GET_FEE_ADDRESS {
-  typedef EMPTY_STRUCT request;
-
-  struct response {
-    std::string fee_address;
-    std::string status;
-
-    void serialize(ISerializer &s) {
-      KV_MEMBER(fee_address)
-      KV_MEMBER(status)
-    }
-  };
-};
-
 struct COMMAND_RPC_GETBLOCKCOUNT {
   typedef std::vector<std::string> request;
 
@@ -566,107 +503,6 @@ struct f_block_details_response {
     KV_MEMBER(totalFeeAmount)
   }
 };
-struct currency_base_coin {
-  std::string name;
-  std::string git;
-
-  void serialize(ISerializer &s) {
-    KV_MEMBER(name)
-    KV_MEMBER(git)
-  }
-};
-
-struct currency_core {
-  std::vector<std::string> SEED_NODES;
-  unsigned EMISSION_SPEED_FACTOR;
-  uint64_t DIFFICULTY_TARGET;
-  size_t CRYPTONOTE_DISPLAY_DECIMAL_POINT;
-  std::string MONEY_SUPPLY;
-  uint64_t DEFAULT_DUST_THRESHOLD;
-  uint64_t MINIMUM_FEE;
-  uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW;
-  size_t CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
-  size_t CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1;
-  size_t CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2;
-  uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
-  int P2P_DEFAULT_PORT;
-  int RPC_DEFAULT_PORT;
-  size_t MAX_BLOCK_SIZE_INITIAL;
-  uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;
-  uint32_t UPGRADE_HEIGHT_V2;
-  uint32_t UPGRADE_HEIGHT_V3;
-  size_t DIFFICULTY_WINDOW;
-  size_t DIFFICULTY_CUT;
-  size_t DIFFICULTY_LAG;
-  uint16_t MIN_MIXIN;
-  uint8_t MANDATORY_MIXIN_BLOCK_VERSION;
-  uint32_t MIXIN_START_HEIGHT;
-  uint32_t MANDATORY_TRANSACTION;
-  uint32_t KILL_HEIGHT;
-  uint64_t TAIL_EMISSION_REWARD;
-  uint8_t CRYPTONOTE_COIN_VERSION;
-  std::string GENESIS_BLOCK_REWARD;
-  size_t DIFFICULTY_WINDOW_V1;
-  size_t DIFFICULTY_WINDOW_V2;
-  size_t DIFFICULTY_CUT_V1;
-  size_t DIFFICULTY_CUT_V2;
-  size_t DIFFICULTY_LAG_V1;
-  size_t DIFFICULTY_LAG_V2;
-  uint32_t ZAWY_DIFFICULTY_BLOCK_INDEX;
-  size_t ZAWY_DIFFICULTY_V2;
-  uint8_t ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION;
-  uint32_t BUGGED_ZAWY_DIFFICULTY_BLOCK_INDEX;
-  std::string BYTECOIN_NETWORK;
-  std::string CRYPTONOTE_NAME;
-  std::string GENESIS_COINBASE_TX_HEX;
-  std::vector<std::string> CHECKPOINTS;
-
-  void serialize(ISerializer &s) {
-    KV_MEMBER(SEED_NODES)
-    KV_MEMBER(EMISSION_SPEED_FACTOR)
-    KV_MEMBER(DIFFICULTY_TARGET)
-    KV_MEMBER(CRYPTONOTE_DISPLAY_DECIMAL_POINT)
-    KV_MEMBER(MONEY_SUPPLY)
-    KV_MEMBER(DEFAULT_DUST_THRESHOLD)
-    KV_MEMBER(MINIMUM_FEE)
-    KV_MEMBER(CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW)
-    KV_MEMBER(CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE)
-    KV_MEMBER(CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1)
-    KV_MEMBER(CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2)
-    KV_MEMBER(CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX)
-    KV_MEMBER(P2P_DEFAULT_PORT)
-    KV_MEMBER(RPC_DEFAULT_PORT)
-    KV_MEMBER(MAX_BLOCK_SIZE_INITIAL)
-    KV_MEMBER(EXPECTED_NUMBER_OF_BLOCKS_PER_DAY)
-    KV_MEMBER(UPGRADE_HEIGHT_V2)
-    KV_MEMBER(UPGRADE_HEIGHT_V3)
-    KV_MEMBER(DIFFICULTY_WINDOW)
-    KV_MEMBER(DIFFICULTY_CUT)
-    KV_MEMBER(DIFFICULTY_LAG)
-    KV_MEMBER(MIN_MIXIN)
-    KV_MEMBER(MANDATORY_MIXIN_BLOCK_VERSION)
-    KV_MEMBER(MIXIN_START_HEIGHT)
-    KV_MEMBER(MANDATORY_TRANSACTION)
-    KV_MEMBER(KILL_HEIGHT)
-    KV_MEMBER(TAIL_EMISSION_REWARD)
-    KV_MEMBER(CRYPTONOTE_COIN_VERSION)
-    KV_MEMBER(GENESIS_BLOCK_REWARD)
-    KV_MEMBER(DIFFICULTY_WINDOW_V1)
-    KV_MEMBER(DIFFICULTY_WINDOW_V2)
-    KV_MEMBER(DIFFICULTY_CUT_V1)
-    KV_MEMBER(DIFFICULTY_CUT_V2)
-    KV_MEMBER(DIFFICULTY_LAG_V1)
-    KV_MEMBER(DIFFICULTY_LAG_V2)
-    KV_MEMBER(ZAWY_DIFFICULTY_BLOCK_INDEX)
-    KV_MEMBER(ZAWY_DIFFICULTY_V2)
-    KV_MEMBER(ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION)
-    KV_MEMBER(BUGGED_ZAWY_DIFFICULTY_BLOCK_INDEX)
-    KV_MEMBER(BYTECOIN_NETWORK)
-    KV_MEMBER(CRYPTONOTE_NAME)
-    KV_MEMBER(GENESIS_COINBASE_TX_HEX)
-    KV_MEMBER(CHECKPOINTS)
-  }
-};
 struct COMMAND_RPC_GET_LAST_BLOCK_HEADER {
   typedef EMPTY_STRUCT request;
   typedef BLOCK_HEADER_RESPONSE response;
@@ -769,22 +605,6 @@ struct F_COMMAND_RPC_GET_POOL {
 
     void serialize(ISerializer &s) {
       KV_MEMBER(transactions)
-      KV_MEMBER(status)
-    }
-  };
-};
-struct F_COMMAND_RPC_GET_BLOCKCHAIN_SETTINGS {
-  typedef EMPTY_STRUCT request;
-  struct response {
-    currency_base_coin base_coin;
-    currency_core core;
-    std::vector<std::string> extensions;
-    std::string status;
-
-    void serialize(ISerializer &s) {
-      KV_MEMBER(base_coin)
-      KV_MEMBER(core)
-      KV_MEMBER(extensions)
       KV_MEMBER(status)
     }
   };

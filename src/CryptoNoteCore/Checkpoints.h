@@ -27,7 +27,6 @@ namespace CryptoNote
   public:
     Checkpoints(Logging::ILogger& log);
 
-    std::map<uint32_t, Crypto::Hash> get_checkpoints() { return points; }
     bool addCheckpoint(uint32_t index, const std::string& hash_str);
     bool isInCheckpointZone(uint32_t index) const;
     bool checkBlock(uint32_t index, const Crypto::Hash& h) const;

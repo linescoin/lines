@@ -121,12 +121,10 @@ std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction
   { "/get_transaction_hashes_by_payment_id.bin", { binMethod<COMMAND_RPC_GET_TRANSACTION_HASHES_BY_PAYMENT_ID>(&RpcServer::onGetTransactionHashesByPaymentId), false } },
 
   // json handlers
-{ "/getrandom_outs", { jsonMethod<COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON>(&RpcServer::on_get_random_outs_json), false } },
   { "/getinfo", { jsonMethod<COMMAND_RPC_GET_INFO>(&RpcServer::on_get_info), true } },
   { "/getheight", { jsonMethod<COMMAND_RPC_GET_HEIGHT>(&RpcServer::on_get_height), true } },
   { "/gettransactions", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS>(&RpcServer::on_get_transactions), false } },
   { "/sendrawtransaction", { jsonMethod<COMMAND_RPC_SEND_RAW_TX>(&RpcServer::on_send_raw_tx), false } },
-  { "/feeaddress", { jsonMethod<COMMAND_RPC_GET_FEE_ADDRESS>(&RpcServer::on_get_fee_address), true } },
   { "/stop_daemon", { jsonMethod<COMMAND_RPC_STOP_DAEMON>(&RpcServer::on_stop_daemon), true } },
 
   // json rpc
@@ -182,7 +180,6 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "f_block_json", { makeMemberMethod(&RpcServer::f_on_block_json), false } },
       { "f_transaction_json", { makeMemberMethod(&RpcServer::f_on_transaction_json), false } },
       { "f_on_transactions_pool_json", { makeMemberMethod(&RpcServer::f_on_transactions_pool_json), false } },
-      { "f_get_blockchain_settings", { makeMemberMethod(&RpcServer::f_on_get_blockchain_settings), true } },
       { "getblockcount", { makeMemberMethod(&RpcServer::on_getblockcount), true } },
       { "on_getblockhash", { makeMemberMethod(&RpcServer::on_getblockhash), false } },
       { "getblocktemplate", { makeMemberMethod(&RpcServer::on_getblocktemplate), false } },
@@ -217,11 +214,6 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
 
 bool RpcServer::enableCors(const std::vector<std::string> domains) {
   m_cors_domains = domains;
-  return true;
-}
-
-bool RpcServer::setFeeAddress(const std::string fee_address) {
-  m_fee_address = fee_address;
   return true;
 }
 
@@ -304,31 +296,6 @@ bool RpcServer::on_get_indexes(const COMMAND_RPC_GET_TX_GLOBAL_OUTPUTS_INDEXES::
   res.o_indexes.assign(outputIndexes.begin(), outputIndexes.end());
   res.status = CORE_RPC_STATUS_OK;
   logger(TRACE) << "COMMAND_RPC_GET_TX_GLOBAL_OUTPUTS_INDEXES: [" << res.o_indexes.size() << "]";
-  return true;
-}
-
-bool RpcServer::on_get_random_outs_json(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON::request& req, COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON::response& res) {
-  res.status = "Failed";
-
-  for (uint64_t amount : req.amounts) {
-    std::vector<uint32_t> globalIndexes;
-    std::vector<Crypto::PublicKey> publicKeys;
-    if (!m_core.getRandomOutputs(amount, static_cast<uint16_t>(req.outs_count), globalIndexes, publicKeys)) {
-      return true;
-    }
-
-    assert(globalIndexes.size() == publicKeys.size());
-    res.outs.emplace_back(COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_outs_for_amount{amount, {}});
-    for (size_t i = 0; i < globalIndexes.size(); ++i) {
-      COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_JSON_out_entry out_entry;
-      out_entry.global_amount_index = globalIndexes[i];
-      out_entry.out_key = publicKeys[i];
-      res.outs.back().outs.push_back(out_entry);
-    }
-  }
-
-  res.status = CORE_RPC_STATUS_OK;
-
   return true;
 }
 
@@ -540,17 +507,6 @@ bool RpcServer::on_send_raw_tx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMM
   return true;
 }
 
-bool RpcServer::on_get_fee_address(const COMMAND_RPC_GET_FEE_ADDRESS::request& req, COMMAND_RPC_GET_FEE_ADDRESS::response& res) {
-  if (m_fee_address.empty()) {
-    res.status = "Node's fee address is not set";
-    return false;
-  }
-
-  res.fee_address = m_fee_address;
-  res.status = CORE_RPC_STATUS_OK;
-  return true;
-}
-
 bool RpcServer::on_stop_daemon(const COMMAND_RPC_STOP_DAEMON::request& req, COMMAND_RPC_STOP_DAEMON::response& res) {
   if (m_core.getCurrency().isTestnet()) {
     m_p2p.sendStopSignal();
@@ -567,6 +523,11 @@ bool RpcServer::on_stop_daemon(const COMMAND_RPC_STOP_DAEMON::request& req, COMM
 // JSON RPC methods
 //------------------------------------------------------------------------------------------------------------------------------
 bool RpcServer::f_on_blocks_list_json(const F_COMMAND_RPC_GET_BLOCKS_LIST::request& req, F_COMMAND_RPC_GET_BLOCKS_LIST::response& res) {
+  // check if blockchain explorer RPC is enabled
+  if (m_core.getCurrency().isBlockexplorer() == false) {
+    return false;
+  }
+
   if (m_core.getTopBlockIndex() + 1 <= req.height) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT,
       std::string("To big height: ") + std::to_string(req.height) + ", current blockchain height = " + std::to_string(m_core.getTopBlockIndex() + 1) };
@@ -606,6 +567,11 @@ bool RpcServer::f_on_blocks_list_json(const F_COMMAND_RPC_GET_BLOCKS_LIST::reque
 }
 
 bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& req, F_COMMAND_RPC_GET_BLOCK_DETAILS::response& res) {
+  // check if blockchain explorer RPC is enabled
+  if (m_core.getCurrency().isBlockexplorer() == false) {
+    return false;
+  }
+
   Hash hash;
 
   try {
@@ -699,6 +665,11 @@ bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& 
 }
 
 bool RpcServer::f_on_transaction_json(const F_COMMAND_RPC_GET_TRANSACTION_DETAILS::request& req, F_COMMAND_RPC_GET_TRANSACTION_DETAILS::response& res) {
+  // check if blockchain explorer RPC is enabled
+  if (m_core.getCurrency().isBlockexplorer() == false) {
+    return false;
+  }
+
   Hash hash;
 
   if (!parse_hash256(req.hash, hash)) {
@@ -778,6 +749,11 @@ bool RpcServer::f_on_transaction_json(const F_COMMAND_RPC_GET_TRANSACTION_DETAIL
 
 
 bool RpcServer::f_on_transactions_pool_json(const F_COMMAND_RPC_GET_POOL::request& req, F_COMMAND_RPC_GET_POOL::response& res) {
+  // check if blockchain explorer RPC is enabled
+  if (m_core.getCurrency().isBlockexplorer() == false) {
+    return false;
+  }
+
   auto pool = m_core.getPoolTransactions();
   for (const Transaction tx : pool) {
     f_transaction_short_response transaction_short;
@@ -806,116 +782,6 @@ bool RpcServer::f_getMixin(const Transaction& transaction, uint64_t& mixin) {
       mixin = currentMixin;
     }
   }
-  return true;
-}
-bool RpcServer::f_on_get_blockchain_settings(const F_COMMAND_RPC_GET_BLOCKCHAIN_SETTINGS::request& req, F_COMMAND_RPC_GET_BLOCKCHAIN_SETTINGS::response& res) {
-  res.base_coin.name = "bytecoin";
-  res.base_coin.git = "https://github.com/amjuarez/bytecoin.git";
-
-  // Hardcoded plugins, refactor this
-  res.extensions.push_back("core/bytecoin.json");
-  res.extensions.push_back("bug-fixes.json");
-  res.extensions.push_back("print-genesis-tx.json");
-
-  if (m_core.getCurrency().minMixin() != 0 || m_core.getCurrency().mandatoryMixinBlockVersion() != 0) {
-    res.extensions.push_back("mix-mixin.json");
-  }
-  if (m_core.getCurrency().mixinStartHeight() != 0) {
-    res.extensions.push_back("mixin-start-height.json");
-  }
-  if (m_core.getCurrency().mandatoryTransaction() == 1) {
-    res.extensions.push_back("mandatory-transaction-in-block.json");
-  }
-  if (m_core.getCurrency().killHeight() != 0) {
-    res.extensions.push_back("kill-height.json");
-  }
-  if (m_core.getCurrency().tailEmissionReward() != 0) {
-    res.extensions.push_back("tail-emission-reward.json");
-  }
-  if (m_core.getCurrency().cryptonoteCoinVersion() != 0) {
-    res.extensions.push_back("cryptonote-coin-clones-support.json");
-  }
-  if (m_core.getCurrency().genesisBlockReward() != 0) {
-    res.extensions.push_back("genesis-block-reward.json");
-  }
-  if (m_core.getCurrency().difficultyWindowByBlockVersion(1) != m_core.getCurrency().difficultyWindowByBlockVersion(2) || m_core.getCurrency().difficultyWindowByBlockVersion(1) != m_core.getCurrency().difficultyWindowByBlockVersion(3) ||
-    m_core.getCurrency().difficultyLagByBlockVersion(1) != m_core.getCurrency().difficultyLagByBlockVersion(2) || m_core.getCurrency().difficultyLagByBlockVersion(1) != m_core.getCurrency().difficultyLagByBlockVersion(3) ||
-    m_core.getCurrency().difficultyCutByBlockVersion(1) != m_core.getCurrency().difficultyCutByBlockVersion(2) || m_core.getCurrency().difficultyCutByBlockVersion(1) != m_core.getCurrency().difficultyCutByBlockVersion(3)) {
-    res.extensions.push_back("versionized-parameters.json");
-  }
-  if (m_core.getCurrency().zawyDifficultyV2() != 0 || m_core.getCurrency().zawyDifficultyBlockVersion() != 0 ||
-       m_core.getCurrency().zawyDifficultyBlockIndex() != 0 ) {
-    res.extensions.push_back("zawy-difficulty-algorithm.json");
-  }
-  if (m_core.getCurrency().buggedZawyDifficultyBlockIndex() != 0 ) {
-    res.extensions.push_back("bugged-zawy-difficulty-algorithm.json");
-  }
-  res.core.CRYPTONOTE_NAME = m_core.getCurrency().cryptonoteName();
-
-  res.core.EMISSION_SPEED_FACTOR = m_core.getCurrency().emissionSpeedFactor();
-  res.core.DIFFICULTY_TARGET = m_core.getCurrency().difficultyTarget();
-  res.core.CRYPTONOTE_DISPLAY_DECIMAL_POINT = m_core.getCurrency().numberOfDecimalPlaces();
-  res.core.MONEY_SUPPLY = std::to_string(m_core.getCurrency().moneySupply());
-  res.core.EXPECTED_NUMBER_OF_BLOCKS_PER_DAY = m_core.getCurrency().expectedNumberOfBlocksPerDay();
-  res.core.DEFAULT_DUST_THRESHOLD = m_core.getCurrency().defaultDustThreshold();
-  res.core.MINIMUM_FEE = m_core.getCurrency().minimumFee();
-  res.core.CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW = m_core.getCurrency().minedMoneyUnlockWindow();
-  res.core.CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE = m_core.getCurrency().blockGrantedFullRewardZone();
-  res.core.CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1 = m_core.getCurrency().blockGrantedFullRewardZoneV1();
-  res.core.CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2 = m_core.getCurrency().blockGrantedFullRewardZoneV2();
-  res.core.CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = m_core.getCurrency().publicAddressBase58Prefix();
-  res.core.MAX_BLOCK_SIZE_INITIAL = m_core.getCurrency().maxBlockSizeInitial();
-  res.core.UPGRADE_HEIGHT_V2 = m_core.getCurrency().upgradeHeight(2);
-  res.core.UPGRADE_HEIGHT_V3 = m_core.getCurrency().upgradeHeight(3);
-  res.core.DIFFICULTY_WINDOW = m_core.getCurrency().difficultyWindow();
-  res.core.DIFFICULTY_CUT = m_core.getCurrency().difficultyCut();
-  res.core.DIFFICULTY_LAG = m_core.getCurrency().difficultyLag();
-
-  if (m_core.getCurrency().minMixin() != 0 || m_core.getCurrency().mandatoryMixinBlockVersion() != 0) {
-    res.core.MIN_MIXIN = m_core.getCurrency().minMixin();
-    res.core.MANDATORY_MIXIN_BLOCK_VERSION = m_core.getCurrency().mandatoryMixinBlockVersion();
-  }
-  if (m_core.getCurrency().mixinStartHeight() != 0) {
-    res.core.MIXIN_START_HEIGHT = m_core.getCurrency().mixinStartHeight();
-  }
-  res.core.MANDATORY_TRANSACTION = m_core.getCurrency().mandatoryTransaction();
-  res.core.KILL_HEIGHT = m_core.getCurrency().killHeight();
-  res.core.TAIL_EMISSION_REWARD = m_core.getCurrency().tailEmissionReward();
-  res.core.CRYPTONOTE_COIN_VERSION = m_core.getCurrency().cryptonoteCoinVersion();
-  res.core.GENESIS_BLOCK_REWARD = std::to_string(m_core.getCurrency().genesisBlockReward());
-  res.core.DIFFICULTY_WINDOW_V1 = m_core.getCurrency().difficultyWindowV1();
-  res.core.DIFFICULTY_WINDOW_V2 = m_core.getCurrency().difficultyWindowV2();
-  res.core.DIFFICULTY_CUT_V1 = m_core.getCurrency().difficultyCutV1();
-  res.core.DIFFICULTY_CUT_V2 = m_core.getCurrency().difficultyCutV2();
-  res.core.DIFFICULTY_LAG_V1 = m_core.getCurrency().difficultyLagV1();
-  res.core.DIFFICULTY_LAG_V2 = m_core.getCurrency().difficultyLagV2();
-  res.core.ZAWY_DIFFICULTY_BLOCK_INDEX = m_core.getCurrency().zawyDifficultyBlockIndex();
-  res.core.ZAWY_DIFFICULTY_V2 = m_core.getCurrency().zawyDifficultyV2();
-  res.core.ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION = m_core.getCurrency().zawyDifficultyBlockVersion();
-  res.core.BUGGED_ZAWY_DIFFICULTY_BLOCK_INDEX = m_core.getCurrency().buggedZawyDifficultyBlockIndex();
-  res.core.P2P_DEFAULT_PORT = m_p2p.get_this_peer_port();
-  // Not real. Change
-  res.core.RPC_DEFAULT_PORT = m_p2p.get_this_peer_port() + 1;
-
-  for (const NetworkAddress& na : m_p2p.get_seed_nodes()) {
-    std::string na_string = Common::ipAddressToString(na.ip) + ":" + std::to_string(na.port);
-
-    res.core.SEED_NODES.push_back(na_string);
-  }
-
-  res.core.BYTECOIN_NETWORK = boost::lexical_cast<std::string>(m_p2p.get_network_id());
-
-  std::map<uint32_t, Crypto::Hash> cp;
-  cp = m_core.get_checkpoints().get_checkpoints();
-  for (auto i : cp) {
-    std::string cp_string = std::to_string(i.first) + ":" +  Common::podToHex(i.second);
-
-    res.core.CHECKPOINTS.push_back(cp_string);
-  }
-
-  res.core.GENESIS_COINBASE_TX_HEX = Common::toHex(CryptoNote::toBinaryArray(m_core.getCurrency().genesisBlock().baseTransaction));
-
-  res.status = CORE_RPC_STATUS_OK;
   return true;
 }
 bool RpcServer::on_getblockcount(const COMMAND_RPC_GETBLOCKCOUNT::request& req, COMMAND_RPC_GETBLOCKCOUNT::response& res) {
@@ -1121,15 +987,15 @@ bool RpcServer::on_get_block_header_by_hash(const COMMAND_RPC_GET_BLOCK_HEADER_B
 }
 
 bool RpcServer::on_get_block_header_by_height(const COMMAND_RPC_GET_BLOCK_HEADER_BY_HEIGHT::request& req, COMMAND_RPC_GET_BLOCK_HEADER_BY_HEIGHT::response& res) {
-  if (m_core.getTopBlockIndex() < req.height) {
+  if (m_core.getTopBlockIndex() + 1 < req.height) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT,
-      std::string("To big height: ") + std::to_string(req.height) + ", current blockchain height = " + std::to_string(m_core.getTopBlockIndex()) };
+      std::string("To big height: ") + std::to_string(req.height) + ", current blockchain height = " + std::to_string(m_core.getTopBlockIndex() + 1) };
   }
 
-uint32_t index = static_cast<uint32_t>(req.height);
+  uint32_t index = static_cast<uint32_t>(req.height) - 1;
   auto block = m_core.getBlockByIndex(index);
   CachedBlock cachedBlock(block);
-assert(cachedBlock.getBlockIndex() == req.height);
+  assert(cachedBlock.getBlockIndex() == req.height - 1);
   fill_block_header_response(block, false, index, cachedBlock.getBlockHash(), res.block_header);
   res.status = CORE_RPC_STATUS_OK;
   return true;

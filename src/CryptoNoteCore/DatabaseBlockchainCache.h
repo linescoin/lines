@@ -148,7 +148,6 @@ public:
   virtual RawBlock getBlockByIndex(uint32_t index) const override;
   virtual BinaryArray getRawTransaction(uint32_t blockIndex, uint32_t transactionIndex) const override;
   virtual std::vector<Crypto::Hash> getTransactionHashes() const override;
-  virtual std::vector<uint32_t> getRandomOutsByAmount(uint64_t amount, size_t count, uint32_t blockIndex, uint32_t startBlockIndex) const override;
   virtual std::vector<uint32_t> getRandomOutsByAmount(uint64_t amount, size_t count,
                                                       uint32_t blockIndex) const override;
   virtual ExtractOutputKeysResult

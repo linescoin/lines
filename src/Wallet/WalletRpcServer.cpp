@@ -34,8 +34,8 @@ using namespace CryptoNote;
 
 namespace Tools {
 
-const command_line::arg_descriptor<uint16_t> wallet_rpc_server::arg_rpc_bind_port = { "wallet-rpc-bind-port", "Starts wallet as rpc server for wallet operations, sets bind port for server", 0, true };
-const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_bind_ip = { "wallet-rpc-bind-ip", "Specify ip to bind rpc server", "127.0.0.1" };
+const command_line::arg_descriptor<uint16_t> wallet_rpc_server::arg_rpc_bind_port = { "rpc-bind-port", "Starts wallet as rpc server for wallet operations, sets bind port for server", 0, true };
+const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_bind_ip = { "rpc-bind-ip", "Specify ip to bind rpc server", "127.0.0.1" };
 
 void wallet_rpc_server::init_options(boost::program_options::options_description& desc) {
   command_line::add_arg(desc, arg_rpc_bind_ip);
