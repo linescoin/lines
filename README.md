@@ -12,5 +12,6 @@ sudo apt-get update
 sudo apt-get -y install build-essential gcc g++ git cmake libboost-all-dev
 git clone https://github.com/linescoin/lines
 cd lines
+export CXXFLAGS="-std=gnu++11"
 make
 ```
