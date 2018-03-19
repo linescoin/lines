@@ -15,6 +15,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
+
+#define xor64(left, right) { size_t i; for (i = 0; i < 8; ++i) { left[i] ^= right[i]; } }
+
 static void
 #if defined(AESNI)
 cn_slow_hash_aesni
@@ -31,6 +34,12 @@ cn_slow_hash_noaesni
   hash_process(&ctx->state.hs, (const uint8_t*) data, length);
 
   memcpy(ctx->text, ctx->state.init, INIT_SIZE_BYTE);
+
+#define NONCE_POINTER (((const uint8_t*)data)+35)
+  uint8_t tweak1_2[8];
+  memcpy(&tweak1_2, &ctx->state.hs.b[192], sizeof(tweak1_2));
+  xor64(tweak1_2, NONCE_POINTER);
+  
 #if defined(AESNI)
   memcpy(ExpandedKey, ctx->state.hs.b, AES_KEY_SIZE);
   ExpandAESKey256(ExpandedKey);
@@ -39,7 +48,7 @@ cn_slow_hash_noaesni
   oaes_key_import_data(ctx->aes_ctx, ctx->state.hs.b, AES_KEY_SIZE);
   memcpy(ExpandedKey, ctx->aes_ctx->key->exp_data, ctx->aes_ctx->key->exp_data_len);
 #endif
-
+  // 1
   longoutput = (__m128i *) ctx->long_state;
   expkey = (__m128i *) ExpandedKey;
   xmminput = (__m128i *) ctx->text;
@@ -80,7 +89,7 @@ cn_slow_hash_noaesni
     _mm_store_si128(&(longoutput[(i >> 4) + 6]), xmminput[6]);
     _mm_store_si128(&(longoutput[(i >> 4) + 7]), xmminput[7]);
   }
-
+  //2
   for (i = 0; i < 2; i++)
   {
     ctx->a[i] = ((uint64_t *)ctx->state.k)[i] ^  ((uint64_t *)ctx->state.k)[i+4];
@@ -93,12 +102,14 @@ cn_slow_hash_noaesni
 
   for(i = 0; likely(i < 0x80000); i++)
   {
+    // monero p = &long_state[state_index(a)];
     __m128i c_x = _mm_load_si128((__m128i *)&ctx->long_state[a[0] & 0x1FFFF0]);
     __m128i a_x = _mm_load_si128((__m128i *)a);
     ALIGNED_DECL(uint64_t c[2], 16);
     ALIGNED_DECL(uint64_t b[2], 16);
     uint64_t *nextblock, *dst;
 
+    //  monero aesb_single_round(p, p, a);
 #if defined(AESNI)
     c_x = _mm_aesenc_si128(c_x, a_x);
 #else
@@ -111,6 +122,13 @@ cn_slow_hash_noaesni
     b_x = _mm_xor_si128(b_x, c_x);
     _mm_store_si128((__m128i *)&ctx->long_state[a[0] & 0x1FFFF0], b_x);
 
+    // variant_1_1
+    const uint8_t tmp = ((const uint8_t*)(&ctx->long_state[a[0] & 0x1FFFF0]))[11];
+    static const uint32_t table = 0x75310;
+    const uint8_t index = (((tmp >> 3) & 6) | (tmp & 1)) << 1;
+    ((uint8_t*)(&ctx->long_state[a[0] & 0x1FFFF0]))[11] = tmp ^ ((table >> index) & 0x30); 
+    // variant_1_1 end
+    
     nextblock = (uint64_t *)&ctx->long_state[c[0] & 0x1FFFF0];
     b[0] = nextblock[0];
     b[1] = nextblock[1];
@@ -141,6 +159,8 @@ cn_slow_hash_noaesni
     a[1] ^= b[1];
     b_x = c_x;
     //__builtin_prefetch(&ctx->long_state[a[0] & 0x1FFFF0], 0, 3);
+    // variant_1_2
+    xor64(((uint8_t *)dst), tweak1_2);
   }
 
   memcpy(ctx->text, ctx->state.init, INIT_SIZE_BYTE);
