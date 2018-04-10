@@ -1,3 +1,4 @@
+// Copyright (c) 2017-2018, Turtlecoin Developers
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 //
 // This file is part of Bytecoin.
@@ -15,31 +16,32 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
-
-#define xor64(left, right) { size_t i; for (i = 0; i < 8; ++i) { left[i] ^= right[i]; } }
-
 static void
 #if defined(AESNI)
 cn_slow_hash_aesni
 #else
 cn_slow_hash_noaesni
 #endif
-(void *restrict context, const void *restrict data, size_t length, void *restrict hash)
+(void *restrict context, const void *restrict data, size_t length, void *restrict hash, int lite, int variant)
 {
 #define ctx ((struct cn_ctx *) context)
   ALIGNED_DECL(uint8_t ExpandedKey[256], 16);
   size_t i;
   __m128i *longoutput, *expkey, *xmminput, b_x;
   ALIGNED_DECL(uint64_t a[2], 16);
-  hash_process(&ctx->state.hs, (const uint8_t*) data, length);
-
-  memcpy(ctx->text, ctx->state.init, INIT_SIZE_BYTE);
-
-#define NONCE_POINTER (((const uint8_t*)data)+35)
-  uint8_t tweak1_2[8];
-  memcpy(&tweak1_2, &ctx->state.hs.b[192], sizeof(tweak1_2));
-  xor64(tweak1_2, NONCE_POINTER);
   
+  // Decide the scratchpad MEMORY size, number of ITERations, and the state MASK.
+  size_t memory = lite ? LITE_MEMORY : MEMORY;
+  size_t iterations = lite ? LITE_ITER : ITER;
+  size_t mask = lite ? LITE_MASK : MASK;
+
+  // Step 1: Initialise the context state and text buffer with keccak1600.
+  hash_process(&ctx->state.hs, (const uint8_t*) data, length);
+  memcpy(ctx->text, ctx->state.init, INIT_SIZE_BYTE);
+  
+  VARIANT1_INIT64();
+  
+  // Step 2: Fill the scratchpad with initial results from step 1 by iteratively encrypting with AES
 #if defined(AESNI)
   memcpy(ExpandedKey, ctx->state.hs.b, AES_KEY_SIZE);
   ExpandAESKey256(ExpandedKey);
@@ -48,15 +50,15 @@ cn_slow_hash_noaesni
   oaes_key_import_data(ctx->aes_ctx, ctx->state.hs.b, AES_KEY_SIZE);
   memcpy(ExpandedKey, ctx->aes_ctx->key->exp_data, ctx->aes_ctx->key->exp_data_len);
 #endif
-  // 1
+
   longoutput = (__m128i *) ctx->long_state;
   expkey = (__m128i *) ExpandedKey;
   xmminput = (__m128i *) ctx->text;
 
-  //for (i = 0; likely(i < MEMORY); i += INIT_SIZE_BYTE)
+  //for (i = 0; likely(i < memory); i += INIT_SIZE_BYTE)
   //    aesni_parallel_noxor(&ctx->long_state[i], ctx->text, ExpandedKey);
 
-  for (i = 0; likely(i < MEMORY); i += INIT_SIZE_BYTE)
+  for (i = 0; likely(i < memory); i += INIT_SIZE_BYTE)
   {
 #if defined(AESNI)
     for(size_t j = 0; j < 10; j++)
@@ -89,27 +91,27 @@ cn_slow_hash_noaesni
     _mm_store_si128(&(longoutput[(i >> 4) + 6]), xmminput[6]);
     _mm_store_si128(&(longoutput[(i >> 4) + 7]), xmminput[7]);
   }
-  //2
+
   for (i = 0; i < 2; i++)
   {
     ctx->a[i] = ((uint64_t *)ctx->state.k)[i] ^  ((uint64_t *)ctx->state.k)[i+4];
     ctx->b[i] = ((uint64_t *)ctx->state.k)[i+2] ^  ((uint64_t *)ctx->state.k)[i+6];
   }
+  
+  // Step 3: Run the mixing functions and bounce 'randomly' ITER-times in the mixing buffer.
 
   b_x = _mm_load_si128((__m128i *)ctx->b);
   a[0] = ctx->a[0];
   a[1] = ctx->a[1];
 
-  for(i = 0; likely(i < 0x80000); i++)
+  for(i = 0; likely(i < iterations); i++)
   {
-    // monero p = &long_state[state_index(a)];
-    __m128i c_x = _mm_load_si128((__m128i *)&ctx->long_state[a[0] & 0x1FFFF0]);
+    __m128i c_x = _mm_load_si128((__m128i *)&ctx->long_state[a[0] & mask]);
     __m128i a_x = _mm_load_si128((__m128i *)a);
     ALIGNED_DECL(uint64_t c[2], 16);
     ALIGNED_DECL(uint64_t b[2], 16);
     uint64_t *nextblock, *dst;
 
-    //  monero aesb_single_round(p, p, a);
 #if defined(AESNI)
     c_x = _mm_aesenc_si128(c_x, a_x);
 #else
@@ -117,19 +119,13 @@ cn_slow_hash_noaesni
 #endif
 
     _mm_store_si128((__m128i *)c, c_x);
-    //__builtin_prefetch(&ctx->long_state[c[0] & 0x1FFFF0], 0, 1);
+    //__builtin_prefetch(&ctx->long_state[c[0] & mask], 0, 1);
 
     b_x = _mm_xor_si128(b_x, c_x);
-    _mm_store_si128((__m128i *)&ctx->long_state[a[0] & 0x1FFFF0], b_x);
+    _mm_store_si128((__m128i *)&ctx->long_state[a[0] & mask], b_x);
+    VARIANT1_1(&ctx->long_state[a[0] & mask])
 
-    // variant_1_1
-    const uint8_t tmp = ((const uint8_t*)(&ctx->long_state[a[0] & 0x1FFFF0]))[11];
-    static const uint32_t table = 0x75310;
-    const uint8_t index = (((tmp >> 3) & 6) | (tmp & 1)) << 1;
-    ((uint8_t*)(&ctx->long_state[a[0] & 0x1FFFF0]))[11] = tmp ^ ((table >> index) & 0x30); 
-    // variant_1_1 end
-    
-    nextblock = (uint64_t *)&ctx->long_state[c[0] & 0x1FFFF0];
+    nextblock = (uint64_t *)&ctx->long_state[c[0] & mask];
     b[0] = nextblock[0];
     b[1] = nextblock[1];
 
@@ -151,17 +147,18 @@ cn_slow_hash_noaesni
       a[0] += hi;
       a[1] += lo;
     }
-    dst = (uint64_t *) &ctx->long_state[c[0] & 0x1FFFF0];
+    dst = (uint64_t *) &ctx->long_state[c[0] & mask];
     dst[0] = a[0];
     dst[1] = a[1];
 
     a[0] ^= b[0];
     a[1] ^= b[1];
+    VARIANT1_2(dst + 1);
     b_x = c_x;
-    //__builtin_prefetch(&ctx->long_state[a[0] & 0x1FFFF0], 0, 3);
-    // variant_1_2
-    xor64(((uint8_t *)dst), tweak1_2);
+    //__builtin_prefetch(&ctx->long_state[a[0] & mask], 0, 3);
   }
+  
+  // Step 4: Walk through the mixing buffer and mix the random data into the text buffer.
 
   memcpy(ctx->text, ctx->state.init, INIT_SIZE_BYTE);
 #if defined(AESNI)
@@ -172,10 +169,10 @@ cn_slow_hash_noaesni
   memcpy(ExpandedKey, ctx->aes_ctx->key->exp_data, ctx->aes_ctx->key->exp_data_len);
 #endif
 
-  //for (i = 0; likely(i < MEMORY); i += INIT_SIZE_BYTE)
+  //for (i = 0; likely(i < memory); i += INIT_SIZE_BYTE)
   //    aesni_parallel_xor(&ctx->text, ExpandedKey, &ctx->long_state[i]);
 
-  for (i = 0; likely(i < MEMORY); i += INIT_SIZE_BYTE)
+  for (i = 0; likely(i < memory); i += INIT_SIZE_BYTE)
   {
     xmminput[0] = _mm_xor_si128(longoutput[(i >> 4)], xmminput[0]);
     xmminput[1] = _mm_xor_si128(longoutput[(i >> 4) + 1], xmminput[1]);
@@ -215,6 +212,7 @@ cn_slow_hash_noaesni
   oaes_free((OAES_CTX **) &ctx->aes_ctx);
 #endif
 
+  // Step 5: Run keccak1600 on the state and use the resultant output to select which finalisation hash function to use.
   memcpy(ctx->state.init, ctx->text, INIT_SIZE_BYTE);
   hash_permutation(&ctx->state.hs);
   extra_hashes[ctx->state.hs.b[0] & 3](&ctx->state, 200, hash);
