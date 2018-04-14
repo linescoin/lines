@@ -421,7 +421,13 @@ bool Core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockHashes, ui
     currentIndex = mainChain->getTopBlockIndex();
 
     startIndex = findBlockchainSupplement(knownBlockHashes); // throws
-
+    if (startIndex > 0 && timestamp == 0) {
+      if (startIndex <= mainChain->getTopBlockIndex()) {
+        RawBlock block = mainChain->getBlockByIndex(startIndex);
+        auto blockTemplate = extractBlockTemplate(block);
+        timestamp = blockTemplate.timestamp;
+      }
+    }
     fullOffset = mainChain->getTimestampLowerBoundBlockIndex(timestamp);
     if (fullOffset < startIndex) {
       fullOffset = startIndex;
