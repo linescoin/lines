@@ -126,7 +126,10 @@ size_t difficultyBlocksCountByBlockVersion(uint8_t blockMajorVersion) const;
   bool parseAmount(const std::string& str, uint64_t& amount) const;
 
   Difficulty nextDifficulty(std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
-Difficulty nextDifficulty(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
+
+  Difficulty nextDifficulty(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
+  Difficulty nextDifficultyV1(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
+  Difficulty nextDifficultyV5(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
 
   bool checkProofOfWorkV1(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) const;
   bool checkProofOfWorkV2(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) const;
@@ -194,6 +197,7 @@ private:
   uint32_t m_upgradeHeightV2;
   uint32_t m_upgradeHeightV3;
   uint32_t m_upgradeHeightV4;
+  uint32_t m_upgradeHeightV5;
   unsigned int m_upgradeVotingThreshold;
   uint32_t m_upgradeVotingWindow;
   uint32_t m_upgradeWindow;
@@ -277,6 +281,7 @@ public:
   CurrencyBuilder& upgradeHeightV2(uint32_t val) { m_currency.m_upgradeHeightV2 = val; return *this; }
   CurrencyBuilder& upgradeHeightV3(uint32_t val) { m_currency.m_upgradeHeightV3 = val; return *this; }
   CurrencyBuilder& upgradeHeightV4(uint32_t val) { m_currency.m_upgradeHeightV4 = val; return *this; }
+  CurrencyBuilder& upgradeHeightV5(uint32_t val) { m_currency.m_upgradeHeightV5 = val; return *this; }
   CurrencyBuilder& upgradeVotingThreshold(unsigned int val);
   CurrencyBuilder& upgradeVotingWindow(uint32_t val) { m_currency.m_upgradeVotingWindow = val; return *this; }
   CurrencyBuilder& upgradeWindow(uint32_t val);

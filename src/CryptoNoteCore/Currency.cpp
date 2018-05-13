@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018, The Lines developers
 //
 // This file is part of Bytecoin.
 //
@@ -170,6 +171,8 @@ uint32_t Currency::upgradeHeight(uint8_t majorVersion) const {
     return m_upgradeHeightV3;
   } else if (majorVersion == BLOCK_MAJOR_VERSION_4) {
     return m_upgradeHeightV4;
+  } else if (majorVersion == BLOCK_MAJOR_VERSION_5) {
+    return m_upgradeHeightV5;
   } else {
     return static_cast<uint32_t>(-1);
   }
@@ -436,6 +439,7 @@ bool Currency::parseAmount(const std::string& str, uint64_t& amount) const {
   return Common::fromString(strAmount, amount);
 }
 
+
 Difficulty Currency::nextDifficulty(std::vector<uint64_t> timestamps,
   std::vector<Difficulty> cumulativeDifficulties) const {
   assert(m_difficultyWindow >= 2);
@@ -481,7 +485,45 @@ Difficulty Currency::nextDifficulty(std::vector<uint64_t> timestamps,
   return (low + timeSpan - 1) / timeSpan;
 }
 
-Difficulty Currency::nextDifficulty(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps,
+
+Difficulty Currency::nextDifficulty(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps,std::vector<Difficulty> cumulativeDifficulties) const {
+  if (version >= BLOCK_MAJOR_VERSION_5) {
+    return nextDifficultyV5(version, blockIndex, timestamps, cumulativeDifficulties);
+  } 
+    return nextDifficultyV1(version, blockIndex, timestamps, cumulativeDifficulties);
+}
+
+// Simple EMA difficulty
+// Proposed by Zawy in Discord channel
+
+Difficulty Currency::nextDifficultyV5(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const {
+  size_t c_difficultyWindow = CryptoNote::parameters::DIFFICULTY_WINDOW;
+  int64_t T = static_cast<int64_t>(m_difficultyTarget);
+
+  if (timestamps.size() > c_difficultyWindow) {
+    timestamps.resize(c_difficultyWindow);
+    cumulativeDifficulties.resize(c_difficultyWindow);
+  }
+  size_t length = timestamps.size();
+  assert(length == cumulativeDifficulties.size());
+  assert(length <= c_difficultyWindow);
+  if (length <= 1)
+    return 1;
+
+
+  int64_t prev_ST = timestamps.back() - timestamps[timestamps.size()-2];
+  int64_t prev_D = cumulativeDifficulties.back() - cumulativeDifficulties[cumulativeDifficulties.size()-2];
+  double next_D = prev_D*27/(26+prev_ST/T/0.982);   
+  if ( ceil(next_D + 0.01) > ceil(next_D - 0.01) ) { 
+    next_D = ceil(next_D + 0.03); 
+  }
+  
+  return static_cast<uint64_t>(next_D);
+
+}
+
+
+Difficulty Currency::nextDifficultyV1(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps,
   std::vector<Difficulty> cumulativeDifficulties) const {
 
 std::vector<uint64_t> timestamps_o(timestamps);
@@ -653,6 +695,7 @@ bool Currency::checkProofOfWork(Crypto::cn_context& context, const CachedBlock& 
   case BLOCK_MAJOR_VERSION_2:
   case BLOCK_MAJOR_VERSION_3:
   case BLOCK_MAJOR_VERSION_4:
+  case BLOCK_MAJOR_VERSION_5:
     return checkProofOfWorkV2(context, block, currentDiffic);
   }
 
@@ -718,6 +761,7 @@ m_fusionTxMinInOutCountRatio(currency.m_fusionTxMinInOutCountRatio),
 m_upgradeHeightV2(currency.m_upgradeHeightV2),
 m_upgradeHeightV3(currency.m_upgradeHeightV3),
 m_upgradeHeightV4(currency.m_upgradeHeightV4),
+m_upgradeHeightV5(currency.m_upgradeHeightV5),
 m_upgradeVotingThreshold(currency.m_upgradeVotingThreshold),
 m_upgradeVotingWindow(currency.m_upgradeVotingWindow),
 m_upgradeWindow(currency.m_upgradeWindow),
@@ -783,6 +827,7 @@ zawyDifficultyBlockVersion(parameters::ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION)
   upgradeHeightV2(parameters::UPGRADE_HEIGHT_V2);
   upgradeHeightV3(parameters::UPGRADE_HEIGHT_V3);
   upgradeHeightV4(parameters::UPGRADE_HEIGHT_V4);
+  upgradeHeightV5(parameters::UPGRADE_HEIGHT_V5);
   upgradeVotingThreshold(parameters::UPGRADE_VOTING_THRESHOLD);
   upgradeVotingWindow(parameters::UPGRADE_VOTING_WINDOW);
   upgradeWindow(parameters::UPGRADE_WINDOW);
