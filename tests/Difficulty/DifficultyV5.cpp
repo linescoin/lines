@@ -45,9 +45,9 @@ int main(int argc, char *argv[]) {
     fstream data(argv[1], fstream::in);
     data.exceptions(fstream::badbit);
     data.clear(data.rdstate());
-    uint64_t timestamp, difficulty, cumulative_difficulty = 0;
+    uint64_t timestamp, difficulty, block_id, cumulative_difficulty = 0;
     size_t n = 0;
-    while (data >> timestamp >> difficulty) {
+    while (data >> block_id >> timestamp >> difficulty) {
         size_t begin, end;
         if (n < currency.difficultyWindow() + currency.difficultyLag()) {
             begin = 0;
@@ -62,8 +62,7 @@ int main(int argc, char *argv[]) {
             uint64_t resv5 = currency.nextDifficulty(5, 0, 
               vector<uint64_t>(timestamps.begin() + begin, timestamps.begin() + end),
             vector<uint64_t>(cumulative_difficulties.begin() + begin, cumulative_difficulties.begin() + end));
-            cout << "V1: " << difficulty << endl
-              << "V5: " << resv5 << endl;
+            cout << block_id << " " << difficulty << " " << resv5 << endl;
         }
         
         timestamps.push_back(timestamp);

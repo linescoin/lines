@@ -494,31 +494,34 @@ Difficulty Currency::nextDifficulty(uint8_t version, uint32_t blockIndex, std::v
 }
 
 Difficulty Currency::nextDifficultyV5(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const {
-  int64_t T = static_cast<int64_t>(m_difficultyTarget);
-
   size_t length = timestamps.size();
   assert(length == cumulativeDifficulties.size());
   if (length <= 1)
     return 1;
 
 // Simple EMA difficulty
-// Copyright (c) 2018 Jacob Eliosoff and Tom Harding
+// Copyright (c) 2018 Zawy
+// Math by Jacob Eliosoff and Tom Harding
 // https://github.com/kyuupichan/difficulty/pull/30
-// Zawy selected N, adjustment factor, and the following timestamp protection:
+// Zawy selected N, adjustment factor, round-off error protection,
+// and the following timestamp protection:
 // const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT   = 3xT;  // (360 for T=120 seconds)
 // const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW  = 11;
 // https://github.com/zawy12/difficulty-algorithms/issues/21
-// Lines coin did first C++ implementation.
+// Lines coin did first live coin C++ implementation.
 
-  int64_t prev_ST = timestamps.back() - timestamps[timestamps.size()-2];
-  int64_t prev_D = cumulativeDifficulties.back() - cumulativeDifficulties[cumulativeDifficulties.size()-2];
-  double next_D = prev_D*27/(26+prev_ST/T/0.982);   
-  if ( ceil(next_D + 0.01) > ceil(next_D - 0.01) ) { 
-    next_D = ceil(next_D + 0.03); 
+  double T  = m_difficultyTarget; // must be signed.
+  double ST = timestamps.back() - timestamps[timestamps.size()-2]; // must be signed.
+  double D  = cumulativeDifficulties.back() - cumulativeDifficulties[cumulativeDifficulties.size()-2];
+  
+  double next_D = D*27/(26+ST/T/0.982);   
+  
+  if( ceil(next_D + 0.01) > ceil(next_D - 0.01) )
+  {
+    next_D = ceil(next_D + 0.03);  
   }
   
   return static_cast<uint64_t>(next_D);
-
 }
 
 

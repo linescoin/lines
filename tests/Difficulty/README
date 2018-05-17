@@ -1,2 +1,2 @@
-Currently DifficultyV5.cpp is just a sanity check. Use datav1.txt as input
-to see if results of V1 and V5 are comparable.
+To test difficulty v5 run DifficultyV5 datav5.txt. Numbers in two last 
+columns should match.
