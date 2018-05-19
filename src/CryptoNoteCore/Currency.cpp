@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018, The Lines developers
 //
 // This file is part of Bytecoin.
 //
@@ -169,6 +170,8 @@ uint32_t Currency::upgradeHeight(uint8_t majorVersion) const {
     return m_upgradeHeightV3;
   } else if (majorVersion == BLOCK_MAJOR_VERSION_4) {
     return m_upgradeHeightV4;
+  } else if (majorVersion == BLOCK_MAJOR_VERSION_5) {
+    return m_upgradeHeightV5;
   } else {
     return static_cast<uint32_t>(-1);
   }
@@ -435,6 +438,7 @@ bool Currency::parseAmount(const std::string& str, uint64_t& amount) const {
   return Common::fromString(strAmount, amount);
 }
 
+
 Difficulty Currency::nextDifficulty(std::vector<uint64_t> timestamps,
   std::vector<Difficulty> cumulativeDifficulties) const {
   assert(m_difficultyWindow >= 2);
@@ -480,7 +484,47 @@ Difficulty Currency::nextDifficulty(std::vector<uint64_t> timestamps,
   return (low + timeSpan - 1) / timeSpan;
 }
 
-Difficulty Currency::nextDifficulty(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps,
+
+Difficulty Currency::nextDifficulty(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps,std::vector<Difficulty> cumulativeDifficulties) const {
+  if (version >= BLOCK_MAJOR_VERSION_5) {
+    return nextDifficultyV5(version, blockIndex, timestamps, cumulativeDifficulties);
+  } 
+    return nextDifficultyV1(version, blockIndex, timestamps, cumulativeDifficulties);
+}
+
+Difficulty Currency::nextDifficultyV5(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const {
+  size_t length = timestamps.size();
+  assert(length == cumulativeDifficulties.size());
+  if (length <= 1)
+    return 1;
+
+// Simple EMA difficulty
+// Copyright (c) 2018 Zawy
+// Math by Jacob Eliosoff and Tom Harding
+// https://github.com/kyuupichan/difficulty/pull/30
+// Zawy selected N, adjustment factor, round-off error protection,
+// and the following timestamp protection:
+// const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT   = 3xT;  // (360 for T=120 seconds)
+// const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW  = 11;
+// https://github.com/zawy12/difficulty-algorithms/issues/21
+// Lines coin did first live coin C++ implementation.
+
+  double T  = m_difficultyTarget; // must be signed.
+  double ST = timestamps.back() - timestamps[timestamps.size()-2]; // must be signed.
+  double D  = cumulativeDifficulties.back() - cumulativeDifficulties[cumulativeDifficulties.size()-2];
+  
+  double next_D = D*27/(26+ST/T/0.982);   
+  
+  if( ceil(next_D + 0.01) > ceil(next_D - 0.01) )
+  {
+    next_D = ceil(next_D + 0.03);  
+  }
+  
+  return static_cast<uint64_t>(next_D);
+}
+
+
+Difficulty Currency::nextDifficultyV1(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps,
   std::vector<Difficulty> cumulativeDifficulties) const {
 
 std::vector<uint64_t> timestamps_o(timestamps);
@@ -652,6 +696,7 @@ bool Currency::checkProofOfWork(Crypto::cn_context& context, const CachedBlock& 
   case BLOCK_MAJOR_VERSION_2:
   case BLOCK_MAJOR_VERSION_3:
   case BLOCK_MAJOR_VERSION_4:
+  case BLOCK_MAJOR_VERSION_5:
     return checkProofOfWorkV2(context, block, currentDiffic);
   }
 
@@ -690,6 +735,8 @@ m_publicAddressBase58Prefix(currency.m_publicAddressBase58Prefix),
 m_minedMoneyUnlockWindow(currency.m_minedMoneyUnlockWindow),
 m_timestampCheckWindow(currency.m_timestampCheckWindow),
 m_blockFutureTimeLimit(currency.m_blockFutureTimeLimit),
+m_timestampCheckWindowV5(currency.m_timestampCheckWindowV5),
+m_blockFutureTimeLimitV5(currency.m_blockFutureTimeLimitV5),
 m_moneySupply(currency.m_moneySupply),
 m_emissionSpeedFactor(currency.m_emissionSpeedFactor),
 m_rewardBlocksWindow(currency.m_rewardBlocksWindow),
@@ -717,6 +764,7 @@ m_fusionTxMinInOutCountRatio(currency.m_fusionTxMinInOutCountRatio),
 m_upgradeHeightV2(currency.m_upgradeHeightV2),
 m_upgradeHeightV3(currency.m_upgradeHeightV3),
 m_upgradeHeightV4(currency.m_upgradeHeightV4),
+m_upgradeHeightV5(currency.m_upgradeHeightV5),
 m_upgradeVotingThreshold(currency.m_upgradeVotingThreshold),
 m_upgradeVotingWindow(currency.m_upgradeVotingWindow),
 m_upgradeWindow(currency.m_upgradeWindow),
@@ -742,6 +790,8 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
 
   timestampCheckWindow(parameters::BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW);
   blockFutureTimeLimit(parameters::CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT);
+  timestampCheckWindowV5(parameters::BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V5);
+  blockFutureTimeLimitV5(parameters::CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V5);
 
   moneySupply(parameters::MONEY_SUPPLY);
   emissionSpeedFactor(parameters::EMISSION_SPEED_FACTOR);
@@ -782,6 +832,7 @@ zawyDifficultyBlockVersion(parameters::ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION)
   upgradeHeightV2(parameters::UPGRADE_HEIGHT_V2);
   upgradeHeightV3(parameters::UPGRADE_HEIGHT_V3);
   upgradeHeightV4(parameters::UPGRADE_HEIGHT_V4);
+  upgradeHeightV5(parameters::UPGRADE_HEIGHT_V5);
   upgradeVotingThreshold(parameters::UPGRADE_VOTING_THRESHOLD);
   upgradeVotingWindow(parameters::UPGRADE_VOTING_WINDOW);
   upgradeWindow(parameters::UPGRADE_WINDOW);

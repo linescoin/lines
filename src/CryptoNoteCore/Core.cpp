@@ -199,6 +199,7 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_4, currency.upgradeHeight(BLOCK_MAJOR_VERSION_4));
+  upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_5, currency.upgradeHeight(BLOCK_MAJOR_VERSION_5));
   transactionPool = std::unique_ptr<ITransactionPoolCleanWrapper>(new TransactionPoolCleanWrapper(
     std::unique_ptr<ITransactionPool>(new TransactionPool(logger)),
     std::unique_ptr<ITimeProvider>(new RealTimeProvider()),
@@ -1382,12 +1383,22 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
     }
   }
 
-  if (block.timestamp > getAdjustedTime() + currency.blockFutureTimeLimit()) {
+  // changing for V5 hardfork
+  auto c_blockFutureTimeLimit = currency.blockFutureTimeLimit();
+  if(block.majorVersion >= BLOCK_MAJOR_VERSION_5)
+    c_blockFutureTimeLimit = currency.blockFutureTimeLimitV5();
+
+  if (block.timestamp > getAdjustedTime() + c_blockFutureTimeLimit) {
     return error::BlockValidationError::TIMESTAMP_TOO_FAR_IN_FUTURE;
   }
 
-  auto timestamps = cache->getLastTimestamps(currency.timestampCheckWindow(), previousBlockIndex, addGenesisBlock);
-  if (timestamps.size() >= currency.timestampCheckWindow()) {
+  // changing for hardfork
+  auto c_timestampCheckWindow = currency.timestampCheckWindow();
+  if(block.majorVersion >= BLOCK_MAJOR_VERSION_5)
+    c_timestampCheckWindow = currency.timestampCheckWindowV5();
+
+  auto timestamps = cache->getLastTimestamps(c_timestampCheckWindow, previousBlockIndex, addGenesisBlock);
+  if (timestamps.size() >= c_timestampCheckWindow) {
     auto median_ts = Common::medianValue(timestamps);
     if (block.timestamp < median_ts) {
       return error::BlockValidationError::TIMESTAMP_TOO_FAR_IN_PAST;

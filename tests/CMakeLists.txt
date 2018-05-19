@@ -36,6 +36,7 @@ add_executable(TransfersTests ${TransfersTests})
 add_executable(UnitTests ${UnitTests})
 
 add_executable(DifficultyTests Difficulty/Difficulty.cpp)
+add_executable(DifficultyV5Tests Difficulty/DifficultyV5.cpp)
 add_executable(HashTargetTests HashTarget.cpp)
 add_executable(HashTests Hash/main.cpp)
 
@@ -54,6 +55,7 @@ target_link_libraries(TransfersTests IntegrationTestLibrary TestsCommon Wallet g
 target_link_libraries(UnitTests gtest_main PaymentGate Wallet TestGenerator InProcessNode NodeRpcProxy Rpc P2P upnpc-static Http Transfers Serialization System Logging BlockchainExplorer CryptoNoteCore Common Crypto ${Boost_LIBRARIES})
 
 target_link_libraries(DifficultyTests CryptoNoteCore Serialization Crypto Logging Common ${Boost_LIBRARIES})
+target_link_libraries(DifficultyV5Tests CryptoNoteCore Serialization Crypto Logging Common ${Boost_LIBRARIES})
 target_link_libraries(HashTargetTests CryptoNoteCore Crypto)
 target_link_libraries(HashTests Crypto)
 
