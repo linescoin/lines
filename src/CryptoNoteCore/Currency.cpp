@@ -510,14 +510,14 @@ Difficulty Currency::nextDifficultyV5(uint8_t version, uint32_t blockIndex, std:
 // Lines coin did first live coin C++ implementation.
 
   double T  = m_difficultyTarget; // must be signed.
-  double ST = timestamps.back() - timestamps[timestamps.size()-2]; // must be signed.
+  double ST = static_cast<double>(timestamps.back()) - static_cast<double>(timestamps[timestamps.size()-2]); // must be signed.
   double D  = cumulativeDifficulties.back() - cumulativeDifficulties[cumulativeDifficulties.size()-2];
   
   double next_D = D*27/(26+ST/T/0.982);   
   
   if( ceil(next_D + 0.01) > ceil(next_D - 0.01) )
   {
-    next_D = ceil(next_D + 0.03);  
+    next_D = ceil(next_D + 0.04);  
   }
   
   return static_cast<uint64_t>(next_D);
