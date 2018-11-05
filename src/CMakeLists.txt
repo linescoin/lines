@@ -1,6 +1,9 @@
 add_definitions(-DSTATICLIB)
 
 include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
+include_directories(${CMAKE_SOURCE_DIR}/external/cxxopts)
+include_directories(${CMAKE_SOURCE_DIR}/external/linenoise)
+include_directories(${CMAKE_SOURCE_DIR}/external/json)
 
 file(GLOB_RECURSE BlockchainExplorer BlockchainExplorer/*)
 file(GLOB_RECURSE Common Common/*)
@@ -27,14 +30,14 @@ endif()
 file(GLOB_RECURSE Transfers Transfers/*)
 file(GLOB_RECURSE Wallet Wallet/*)
 file(GLOB_RECURSE WalletLegacy WalletLegacy/*)
-
 file(GLOB_RECURSE JsonRpcServer JsonRpcServer/*)
-
 file(GLOB_RECURSE PaymentGate PaymentGate/*)
 file(GLOB_RECURSE PaymentGateService PaymentGateService/*)
 file(GLOB_RECURSE Miner Miner/*)
+file(GLOB_RECURSE zedwallet zedwallet/*)
+file(GLOB_RECURSE Mnemonics Mnemonics/*)
 
-source_group("" FILES $${Common} ${ConnectivityTool} ${Crypto} ${CryptoNoteCore} ${CryptoNoteProtocol} ${Daemon} ${JsonRpcServer} ${Http} ${Logging} ${NodeRpcProxy} ${P2p} ${Rpc} ${Serialization} ${SimpleWallet} ${System} ${Transfers} ${Wallet} ${WalletLegacy})
+source_group("" FILES $${Common} ${ConnectivityTool} ${Crypto} ${CryptoNoteCore} ${CryptoNoteProtocol} ${Daemon} ${JsonRpcServer} ${Http} ${Logging} ${NodeRpcProxy} ${P2p} ${Rpc} ${Serialization} ${SimpleWallet} ${System} ${Transfers} ${Wallet} ${WalletLegacy} ${zedwallet} ${Mnemonics})
 
 add_library(BlockchainExplorer ${BlockchainExplorer})
 add_library(Common ${Common})
@@ -52,12 +55,14 @@ add_library(Transfers ${Transfers})
 add_library(Wallet ${Wallet} ${WalletLegacy})
 add_library(PaymentGate ${PaymentGate})
 add_library(JsonRpcServer ${JsonRpcServer})
+add_library(Mnemonics ${Mnemonics})
 
 add_executable(ConnectivityTool ${ConnectivityTool})
 add_executable(Daemon ${Daemon})
 add_executable(SimpleWallet ${SimpleWallet})
 add_executable(PaymentGateService ${PaymentGateService})
 add_executable(Miner ${Miner})
+add_executable(zedwallet ${zedwallet} ${ZED_WALLET_SOURCES_OS})
 
 if (MSVC)
   target_link_libraries(System ws2_32)
@@ -74,6 +79,7 @@ target_link_libraries(Daemon P2P Rpc Serialization System Http Logging CryptoNot
 target_link_libraries(SimpleWallet Wallet NodeRpcProxy Transfers Rpc P2P upnpc-static Http Serialization CryptoNoteCore System Logging Common Crypto ${Boost_LIBRARIES})
 target_link_libraries(PaymentGateService PaymentGate JsonRpcServer Wallet NodeRpcProxy Transfers P2P CryptoNoteCore Crypto Rpc Http Serialization System Logging Common InProcessNode upnpc-static BlockchainExplorer rocksdblib ${Boost_LIBRARIES})
 target_link_libraries(Miner CryptoNoteCore Rpc Serialization System Http Logging Common Crypto ${Boost_LIBRARIES})
+target_link_libraries(zedwallet Mnemonics Wallet NodeRpcProxy Transfers Rpc Http CryptoNoteCore System Logging Common ${Boost_LIBRARIES})
 
 add_dependencies(Rpc version)
 
@@ -82,6 +88,7 @@ add_dependencies(Daemon version)
 add_dependencies(SimpleWallet version)
 add_dependencies(PaymentGateService version)
 add_dependencies(P2P version)
+add_dependencies(zedwallet version)
 
 set_property(TARGET ConnectivityTool PROPERTY OUTPUT_NAME "connectivity_tool")
 set_property(TARGET Daemon PROPERTY OUTPUT_NAME "linesd")
