@@ -19,7 +19,6 @@
 
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
-#include "CryptoNoteCore/VerificationContext.h"
 #include "CryptoNoteCore/TransactionApi.h"
 
 

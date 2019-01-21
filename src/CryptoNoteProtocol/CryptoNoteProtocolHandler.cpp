@@ -26,7 +26,6 @@
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "CryptoNoteCore/Currency.h"
-#include "CryptoNoteCore/VerificationContext.h"
 #include "P2p/LevinProtocol.h"
 
 using namespace Logging;

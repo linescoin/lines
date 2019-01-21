@@ -28,7 +28,6 @@
 #include "Common/StringTools.h"
 #include "Common/ScopeExit.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
-#include "CryptoNoteCore/VerificationContext.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
 #include "InProcessNodeErrors.h"
 #include "Common/StringTools.h"

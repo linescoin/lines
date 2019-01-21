@@ -29,7 +29,6 @@
 #include "Logging/FileLogger.h"
 #include "CryptoNoteCore/TransactionApi.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
-#include "CryptoNoteCore/VerificationContext.h"
 #include "Common/StringTools.h"
 #include "System/Context.h"
 #include "System/Timer.h"
